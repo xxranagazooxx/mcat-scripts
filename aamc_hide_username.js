@@ -9,7 +9,6 @@
 // @grant        none
 // ==/UserScript==
 
-
 window.addEventListener('load', function() {
     'use strict';
 
@@ -30,4 +29,3 @@ window.addEventListener('load', function() {
     $("span#MCATTitle", frameIFP)[0].innerHTML = randTitle;
 
 }, false);
-
