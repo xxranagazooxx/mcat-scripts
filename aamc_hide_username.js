@@ -1,12 +1,12 @@
 // ==UserScript==
 // @id           AAMCHideUserName
 // @name         AAMC hide user name
-// @namespace    http://tampermonkey.net/
+// @namespace    AAMCTestNS
 // @version      0.2
 // @description  hide username. helpful for screen shots
 // @author       xxranagazooxx
+// @include        https://www.e-mcat.com/ITDVersions/11.2.0.0/ITDStart.aspx*
 // @match        https://www.e-mcat.com/ITDVersions/11.2.0.0/ITDStart.aspx*
-// @grant        none
 // ==/UserScript==
 
 window.addEventListener('load', function() {
