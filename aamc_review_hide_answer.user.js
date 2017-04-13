@@ -10,12 +10,14 @@
 // debug XXX: validate b4 usage
 d = console.log;
 
-// toggle the highlight.
-// singleton. so multiple instances don't exist
-var toggle = new function(){
+/* 
+ * Toggle highlighting of passages
+ * singleton. so multiple instances don't exist
+ */
+var toggleHighlight = new function(){
     //toggle state "" is hilite; else no-hlite
-
     var t="";
+
     return function(){
         $("span.itdhilite" + (t==="" ? "" : "off"),
           $("frame[name^=passage]",
@@ -29,6 +31,10 @@ var toggle = new function(){
     };
 };
 
+/*
+ * Toggle strikeThroughs of answers
+ *  (singleton)
+ */
 var toggleStrikethrough = new function(){
     // toggle strikeout of answer choices
 
@@ -54,24 +60,20 @@ var toggleStrikethrough = new function(){
 var runOnce = false;
 
 // Attachs toggle to the image
+//TODO: Separate Attaching from executing code: Causes interfering effect with multiple runs/instantiations
 function attachToggleListener(){
-/*    $('#itmshl1 > table > tbody > tr:nth-child(1) > td.s-sol > p > a > span > img',
-      $("frame[name^=ITSElementDisplay]",
-        $("frame[name^=ElementDisplayFrame]")[0]
-        .contentWindow.document)[0]
-      .contentWindow.document)[0]
-    // TODO: make toggle accept event directly
-        .addEventListener('click', function(e){toggle();});*/
     d('attached');
 
     var win = $("frame[name^=ITSElementDisplay]",
                    $("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0];
 
+    //TODO: fix this; crashes when score report screen loads
     if (typeof win === "undefined"){
         console.log("win undef");
        // return;
     }
 
+    // 
     var origFunc = win.contentWindow.displayCurrentSolution;
     // collapse/hide strikes on load
     origFunc(1);
