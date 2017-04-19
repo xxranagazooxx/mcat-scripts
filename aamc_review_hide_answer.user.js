@@ -10,7 +10,7 @@
 // debug XXX: validate b4 usage
 d = console.log;
 
-/* 
+/*
  * Toggle highlighting of passages
  * singleton. so multiple instances don't exist
  */
@@ -91,10 +91,11 @@ function attachToggleListener(){
         var origNav = processAction;
         window.processAction = function(i){
             framedetails();
-            $("frame[name^=ElementDisplayFrame]")[0].contentWindow.addEventListener('load', function(){console.log('load');});
-            //setTimeout(attachToggleListener, 1000);
+            $("frame[name^=ElementDisplayFrame]")[0].contentWindow.addEventListener('load',
+                function(){console.log('load');});
+            setTimeout(attachToggleListener, 500);
             origNav(i);
-            attachToggleListener();
+            //attachToggleListener();
         };
         runOnce = true;
 
@@ -149,4 +150,5 @@ window.addEventListener('message', function(e){
     console.log("recv win: ", win);
     console.log("recv pwin: ", pwin);
 }, false);
+
 
