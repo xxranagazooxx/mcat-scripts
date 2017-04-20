@@ -10,24 +10,39 @@
 // debug XXX: validate b4 usage
 d = console.log;
 
+// get Window Frames
+function getPassageWindow(i){
+    if (typeof i !== 'undefined')
+        return $("frame[name^=passage]",$("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0].contentWindow;
+    return $("frame[name^=passage]",$("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0].contentWindow.document;
+}
+window.pw = getPassageWindow
+
+function getQuestionWindow(i){
+    if (typeof i !== 'undefined')
+        return $("frame[name^=ITSElementDisplay]", $("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0].contentWindow;
+    return $("frame[name^=ITSElementDisplay]", $("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0].contentWindow.document;
+}
+window.qw = getQuestionWindow
+
 /*
  * Toggle highlighting of passages
  * singleton. so multiple instances don't exist
  */
-var toggleHighlight = new function(){
-    //toggle state "" is hilite; else no-hlite
-    var t="";
 
-    return function(){
-        $("span.itdhilite" + (t==="" ? "" : "off"),
-          $("frame[name^=passage]",
-            $("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0]
-          .contentWindow.document).each(
+var togglePassageHighlight = new function(){
+    //toggle state 'true' is hilite; else no-hlite
+    var show = true;
+
+    return function(tshow){
+
+        show = (typeof tshow !== 'undefined') ? tshow : show;
+        $("span.itdhilite" + (show ? "" : "off"), getPassageWindow()).each(
             function(i,e){
-                e.setAttribute('class', 'itdhilite' + (t=== "" ? "off" : ""));});
+                e.setAttribute('class', 'itdhilite' + (show ? "off" : ""));});
         // toggle state
-        t=(t===""? "off":"");
-        d('tog');
+        show = (show===true) ? false : true;
+        console.log("cur passage highlight state: ", show);
     };
 };
 
@@ -41,114 +56,109 @@ var toggleStrikethrough = new function(){
     // current state
     var show = true;
 
-    return function(frame, tshow){
+    return function(tshow){
         show = (typeof tshow !== 'undefined') ? tshow : show;
         if (!show){
-            $(".itdstrikeout", frame).each(
+            $(".itdstrikeout", getQuestionWindow()).each(
                 function(i, e){
                     e.setAttribute('class', 'itdstrikeout-x');});
         } else{
-            $(".itdstrikeout-x", frame).each(
+            $(".itdstrikeout-x", getQuestionWindow()).each(
                 function(i, e){
                     e.setAttribute('class', 'itdstrikeout');});
         }
         show = (show===true) ? false : true;
-        console.log("cur state: ", show);
+        console.log("cur ans strike state: ", show);
     };
 };
 
-var runOnce = false;
+
+var toggleAnswerHighlight = new function (){
+
+    var show = true;
+    var ansKey = null;
+
+    var showr = function(i,e){e.setAttribute('style', 'background-color:yellow');};
+    var hider = function(i,e){e.setAttribute('style', '');};
+
+    return function(tshow){
+        if (ansKey === null){
+            // get key to determine answer
+            ansKey = $("form input[name=Key1]", getQuestionWindow())[0].value;
+            console.log('anskey: ' + ansKey);
+        }
+
+        show = (typeof tshow !== 'undefined') ? tshow : show;
+        if (!show){
+            $("td[class^=ITSMCOptionLabel] div[id=sep1" +ansKey+"]",  getQuestionWindow()).each(showr);
+            $("td[class^=ITSMCOptionLabel] div[id=item1" +ansKey+"]", getQuestionWindow()).each(showr);
+            $("td[class^=ITSMCOptionText] div[id=radio1"+ansKey+"]",  getQuestionWindow()).each(showr);
+        }else{
+            $("td[class^=ITSMCOptionLabel] div[id=sep1" +ansKey+"]",  getQuestionWindow()).each(hider);
+            $("td[class^=ITSMCOptionLabel] div[id=item1" +ansKey+"]", getQuestionWindow()).each(hider);
+            $("td[class^=ITSMCOptionText] div[id=radio1"+ansKey+"]",  getQuestionWindow()).each(hider);
+        }
+        show = (show===true) ? false : true;
+        console.log("cur ans highlight state: ", show);
+    };
+};
 
 // Attachs toggle to the image
-//TODO: Separate Attaching from executing code: Causes interfering effect with multiple runs/instantiations
-function attachToggleListener(){
+function rewireFuncs(){
     d('attached');
 
-    var win = $("frame[name^=ITSElementDisplay]",
-                   $("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0];
+    var win;
+    var pwin;
 
-    //TODO: fix this; crashes when score report screen loads
-    if (typeof win === "undefined"){
-        console.log("win undef");
-       // return;
+    // prevent crashes when score report screen loads
+    try{
+        win = getQuestionWindow('w');
+        //pWin = getPassageWindow('w');
+    }catch(e){
+        return false;
     }
 
-    // 
-    var origFunc = win.contentWindow.displayCurrentSolution;
-    // collapse/hide strikes on load
-    origFunc(1);
-    toggleStrikethrough(win.contentWindow.document, false);
-
-
-    // intercept and inject
-    win.contentWindow.displayCurrentSolution = function(i){
-        toggleStrikethrough(win.contentWindow.document);
+    // intercept. introduce toggle of strikethrough
+    var origFunc = win.displayCurrentSolution;
+    win.displayCurrentSolution = function(i){
         origFunc(i);
+        toggleStrikethrough();
+        toggleAnswerHighlight();
+        togglePassageHighlight();
     };
-    
-    if (!runOnce){
-        // nav function
-        var origNav = processAction;
-        window.processAction = function(i){
-            framedetails();
-            $("frame[name^=ElementDisplayFrame]")[0].contentWindow.addEventListener('load',
-                function(){console.log('load');});
-            setTimeout(attachToggleListener, 500);
-            origNav(i);
-            //attachToggleListener();
-        };
-        runOnce = true;
 
-    }
-    // unload handler
-    /*win.contentWindow.onunload = function(e){
-        console.log('unload');
+    // nav function - TODO: remove intervals, move to event based
+    /*
+    var origNav = processAction;
+    window.processAction = function(i){
         framedetails();
-        win.contentWindow.top.postMessage('frame_change', '*');
-    };*/
+        $("frame[name^=ElementDisplayFrame]")[0].contentWindow.addEventListener('load',
+                                                                                function(){console.log('load');});
+//        setTimeout(rewireFuncs, 1500);
+        origNav(i);
+        setTimeout(function(){
+           //toggleStrikethrough(win.contentWindow.document, false);
+           toggleAnswerHighlight();
+        }, 1000);
+    };
+*/
+    runOnce(win);
 }
 
-// run the hook, so it re-triggers when navigating pages
-function injectHook(){
-
+function runOnce(win){
+    win.displayCurrentSolution(1);
+    toggleStrikethrough(false);
 }
+
 
 // enable/disable button.
 //  usecase: disable hiding when taking tests
 
 // show/hide strikethrough answers
-
-function framedetails(){
-    var pwin = $("frame[name^=ElementDisplayFrame]")[0];
-    var win = $("frame[name^=ITSElementDisplay]",
-                   $("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0];
-    console.log(pwin.contentWindow.location.href);
-    console.log(win.contentWindow.location.href);
-}
-
 var frameDisplay='';
 var framePassage='';
 window.addEventListener('load', function() {
     'use strict';
-    attachToggleListener();
-
-    //XXX: kinda lame to use delay, but the website is wonky
-    /*
-    setTimeout(function(e){
-        //toggle();
-     //   attachToggleListener(); 
-        d('to');}, 5000);*/
-    console.log('done');
+    rewireFuncs();
 });
-
-window.addEventListener('message', function(e){
-    console.log('message recv');
-    framedetails();
-    var pwin = $("frame[name^=ElementDisplayFrame]")[0];
-    var win = $("frame[name^=ITSElementDisplay]",
-                   $("frame[name^=ElementDisplayFrame]")[0].contentWindow.document)[0];
-    console.log("recv win: ", win);
-    console.log("recv pwin: ", pwin);
-}, false);
-
 
